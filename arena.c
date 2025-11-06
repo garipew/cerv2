@@ -66,7 +66,12 @@ void* arena_alloc(Arena *arena, size_t size, size_t align){
 		fprintf(stderr, "The local max is %luB.\n", arena->region_size);
 		return NULL;
 	}
-	if(!find_space(arena, size, align) && !arena_grow(arena, size)){
+	// TODO(garipew): Right now, alloc also cleans the memory. This is nice to do, already an
+	// improvement compared to doing so in reset. But also there's some redundancy here...
+	// Maybe I could find a way to clean exactly what is going to be used and nothing more?  
+	if(find_space(arena, size, align)){
+		memset(arena->current->avail, 0, arena->current->limit-arena->current->avail);
+	}else if(!arena_grow(arena, size)){
 		return NULL;
 	}
 	void *new_ptr = (void*)round_align((uintptr_t)arena->current->avail, align);
@@ -75,12 +80,8 @@ void* arena_alloc(Arena *arena, size_t size, size_t align){
 }
 
 void arena_reset(Arena *arena){
-	// TODO(garipew): Right now, reset also cleans the memory. This is the easiest to do but also
-	// could be very costly in huge arenas... The alternative is to do it lazily on the allocated 
-	// chunks in arena_alloc.
 	for(arena->current = arena->start; arena->current; arena->current = arena->current->next){
 		arena->current->avail = (u8*)arena->current + sizeof(*arena->current);
-		memset(arena->current->avail, 0, arena->current->limit-arena->current->avail);
 	}
 	arena->current = arena->start;
 }
