@@ -31,7 +31,7 @@ typedef struct {
 typedef struct {
 	size_t size;
 	size_t len;
-	u8 *bytes;
+	char *bytes;
 } string;
 
 void* arena_grow(Arena*, size_t);
@@ -39,7 +39,7 @@ void* arena_alloc(Arena*, size_t, size_t);
 void arena_free(Arena*);
 void arena_reset(Arena*);
 string* arena_create_string(Arena*, size_t);
-string* string_concat(Arena*, string*, u8*, size_t);
-int string_find(string*, size_t, u8*, size_t);
-void string_to_bytes(string*, u8*, size_t, size_t);
+string* string_concat(Arena*, string*, char*, size_t);
+int string_find(string*, size_t, char*, size_t);
+void string_to_bytes(string*, char*, size_t, size_t);
 #endif // ARENA_H

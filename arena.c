@@ -102,7 +102,7 @@ void arena_free(Arena *arena){
 string* arena_create_string(Arena *arena, size_t size){
 	string *str = arena_alloc(arena, sizeof(*str)+size, ALIGNOF(*str));
 	str->size = size;
-	str->bytes = (u8*)str+round_align(sizeof(*str), ALIGNOF(u8));
+	str->bytes = (char*)str+round_align(sizeof(*str), ALIGNOF(char));
 	return str;
 }
 
@@ -115,7 +115,7 @@ string* arena_expand_string(Arena *arena, string* str, size_t new_size){
 	return expanded;
 }
 
-string* string_concat(Arena* arena, string* str, u8* raw, size_t len){
+string* string_concat(Arena* arena, string* str, char *raw, size_t len){
 	if(!str){
 		str = arena_expand_string(arena, str, len);
 	}else if(str->len+len > str->size){
@@ -130,17 +130,17 @@ string* string_concat(Arena* arena, string* str, u8* raw, size_t len){
 	return str;
 }
 
-void string_to_bytes(string *str, u8 *bytes, size_t start, size_t byte_count){
+void string_to_bytes(string *str, char *bytes, size_t start, size_t byte_count){
 	for(size_t copied = 0; copied < byte_count; copied++){
 		bytes[copied] = str->bytes[start+copied];
 	}
 }
 
-int string_find(string *line, size_t start_index, u8 *bytes, size_t len){
+int string_find(string *line, size_t start_index, char *bytes, size_t len){
 	if(!line || start_index >= line->len || !bytes || *bytes == 0){
 		return -1;
 	}
-	u8 *current = bytes;
+	char *current = bytes;
 	size_t at;
 	for(at = start_index; at < line->len; at++){
 		if(current == bytes+len){
