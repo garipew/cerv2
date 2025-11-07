@@ -7,6 +7,12 @@
 
 typedef struct {
 	string *method;
+	string *path;
+	string *http_version;
+} RequestLine;
+
+typedef struct {
+	RequestLine *request_line;
 	string *user_agent;
 	string *host;
 	string *server;

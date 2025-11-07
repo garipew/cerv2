@@ -136,13 +136,13 @@ void string_to_bytes(string *str, u8 *bytes, size_t start, size_t byte_count){
 	}
 }
 
-int string_find(string *line, u8 *bytes, size_t len){
-	if(!line || !bytes || *bytes == 0){
+int string_find(string *line, size_t start_index, u8 *bytes, size_t len){
+	if(!line || start_index >= line->len || !bytes || *bytes == 0){
 		return -1;
 	}
 	u8 *current = bytes;
 	size_t at;
-	for(at = 0; at < line->len; at++){
+	for(at = start_index; at < line->len; at++){
 		if(current == bytes+len){
 			return at-len;
 		}

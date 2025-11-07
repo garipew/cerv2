@@ -40,6 +40,6 @@ void arena_free(Arena*);
 void arena_reset(Arena*);
 string* arena_create_string(Arena*, size_t);
 string* string_concat(Arena*, string*, u8*, size_t);
-int string_find(string*, u8*, size_t);
+int string_find(string*, size_t, u8*, size_t);
 void string_to_bytes(string*, u8*, size_t, size_t);
 #endif // ARENA_H
