@@ -43,20 +43,22 @@ int main(){
 			return -1;
 		}
 
-		HttpHeader header = recv_header(&general, clientfd);
-		if(header.request_line){
-			printf("%s ", header.request_line->method->bytes);
-			printf("%s ", header.request_line->path->bytes);
-			printf("%s\n", header.request_line->http_version->bytes);
-			if(header.host){
-				printf("Host: %s", header.host->bytes);
+		HttpHeader request_header = recv_header(&general, clientfd);
+		HttpHeader response_header = write_response_header(&general, &request_header);
+		if(request_header.message.request_line){
+			printf("%d ", request_header.message.request_line->method);
+			printf("%s ", request_header.message.request_line->path->bytes);
+			printf("%s\n", request_header.message.request_line->http_version->bytes);
+			if(request_header.host){
+				printf("Host: %s", request_header.host->bytes);
 			}
-			if(header.user_agent){
-				printf("User-Agent: %s", header.user_agent->bytes);
+			if(request_header.user_agent){
+				printf("User-Agent: %s", request_header.user_agent->bytes);
 			}
 			printf("\r\n");
 		}
 
+		send_header(&general, &response_header, clientfd);
 		close(clientfd);
 		arena_reset(&general);
 	}
