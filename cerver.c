@@ -30,7 +30,7 @@ Method get_method_from_string(string *str){
 string* recv_line(Arena* arena, int fd){
 	static char remaining[CHUNK_SIZE];
 	char chunk[CHUNK_SIZE];
-	string* line = string_concat(arena, NULL, remaining, CHUNK_SIZE);
+	string* line = string_concat_bytes(arena, NULL, remaining, CHUNK_SIZE);
 	memset(remaining, 0, CHUNK_SIZE);
 	int at;
 	for(ssize_t bytes_recvd = 0; ;){
@@ -42,7 +42,7 @@ string* recv_line(Arena* arena, int fd){
 		if((bytes_recvd = recv(fd, chunk, CHUNK_SIZE, 0)) <= 0){
 			break;
 		}
-		line = string_concat(arena, line, chunk, bytes_recvd); 
+		line = string_concat_bytes(arena, line, chunk, bytes_recvd); 
 	}
 	return line;
 }
@@ -57,7 +57,7 @@ RequestLine* new_request_line(Arena *arena, string *header_str){
 		return NULL;
 	}
 	relative_offset = total_offset - (bytes - header_str->bytes);
-	rl->method = get_method_from_string(string_concat(arena, NULL, bytes, relative_offset));
+	rl->method = get_method_from_string(string_concat_bytes(arena, NULL, bytes, relative_offset));
 
 	relative_offset++; 
 	total_offset++; 
@@ -68,7 +68,7 @@ RequestLine* new_request_line(Arena *arena, string *header_str){
 		return NULL;
 	}
 	relative_offset = total_offset - (bytes - header_str->bytes);
-	rl->path = string_concat(arena, NULL, bytes, relative_offset);
+	rl->path = string_concat_bytes(arena, NULL, bytes, relative_offset);
 
 	relative_offset++;
 	total_offset++;
@@ -79,7 +79,7 @@ RequestLine* new_request_line(Arena *arena, string *header_str){
 	if(total_offset < 0 || relative_offset <= 0){
 		return NULL;
 	}
-	rl->http_version = string_concat(arena, NULL, bytes, relative_offset);
+	rl->http_version = string_concat_bytes(arena, NULL, bytes, relative_offset);
 
 	return rl;
 }
@@ -96,9 +96,9 @@ HttpHeader recv_header(Arena *arena, int fd){
 				fprintf(stderr, "Bad Request\n400?\n\n");
 			}
 		}else if(string_find(str, 0,  "Host: ", 6) == 0){
-			header.host = string_concat(arena, NULL, str->bytes+6, str->len-6);
+			header.host = string_concat_bytes(arena, NULL, str->bytes+6, str->len-6);
 		}else if(string_find(str, 0,  "User-Agent: ", 12) == 0){
-			header.user_agent = string_concat(arena, NULL, str->bytes+12, str->len-12);
+			header.user_agent = string_concat_bytes(arena, NULL, str->bytes+12, str->len-12);
 		}
 
 		if((at = string_find(str, 0, "\r\n", 2)) == 0){
@@ -111,8 +111,8 @@ HttpHeader recv_header(Arena *arena, int fd){
 
 ResponseLine* new_response_line_from_bytes(Arena *arena, char *bytes, size_t len){
 	ResponseLine *rl = arena_alloc(arena, sizeof(*rl), ALIGNOF(*rl));
-	rl->http_version = string_concat(arena, NULL, "HTTP/1.1", 8);
-	rl->status = string_concat(arena, NULL, bytes, len);
+	rl->http_version = string_concat_bytes(arena, NULL, "HTTP/1.1", 8);
+	rl->status = string_concat_bytes(arena, NULL, bytes, len);
 	return rl;
 }
 
@@ -156,26 +156,33 @@ void send_header(Arena *arena, HttpHeader *header, int fd){
 	}
 	int added_len;
 
-	string *header_str = string_concat(arena, header->message.response_line->http_version, " ", 1);
-	header_str = string_concat(arena, header_str, header->message.response_line->status->bytes, header->message.response_line->status->len);
-	header_str = string_concat(arena, header_str, "\r\n", 2);
+	string *header_str = string_concat_bytes(arena, header->message.response_line->http_version, " ", 1);
+	header_str = string_concat(arena, header_str, header->message.response_line->status);
+	header_str = string_concat_bytes(arena, header_str, "\r\n", 2);
 
 	if(header->content_length > 0){
-		string *conlen_str =  arena_create_string(arena, sizeof(size_t)+strlen("Content-Length: "));
-		conlen_str = string_concat(arena, conlen_str, "Content-Length: ", strlen("Content-Length: "));
+		// TODO(garipew): This string creation allocates space enough to hold the content length in it's binary
+		// representation. Obviously, this is greater than the space needed to hold it's decimal representation.
+		// TLDR; Should the context present tight memory constraints, this allocation could be shortened.
+		string *conlen_str =  arena_create_string(arena, (sizeof(size_t)*8)+strlen("Content-Length: "));
+		conlen_str = string_concat_bytes(arena, conlen_str, "Content-Length: ", strlen("Content-Length: "));
+
+		// TODO(garipew): This here breaks the entire point of the custom API... I shouldn't use stdio functions
+		// nor manipulate string->bytes directly.
 		sprintf(conlen_str->bytes+conlen_str->len, "%lu%n", header->content_length, &added_len);
 		conlen_str->len+=added_len;
-		conlen_str = string_concat(arena, conlen_str, "\r\n", 2);
-		header_str = string_concat(arena, header_str, conlen_str->bytes, conlen_str->len);
+
+		conlen_str = string_concat_bytes(arena, conlen_str, "\r\n", 2);
+		header_str = string_concat(arena, header_str, conlen_str);
 	}
 
 	if(header->server){
-		header_str = string_concat(arena, header_str, "Server: ", 8); 
-		header_str = string_concat(arena, header_str, header->server->bytes, header->server->len); 
-		header_str = string_concat(arena, header_str, "\r\n", 2);
+		header_str = string_concat_bytes(arena, header_str, "Server: ", 8); 
+		header_str = string_concat(arena, header_str, header->server); 
+		header_str = string_concat_bytes(arena, header_str, "\r\n", 2);
 	}
 
-	header_str = string_concat(arena, header_str, "\r\n", 2);
+	header_str = string_concat_bytes(arena, header_str, "\r\n", 2);
 	for(size_t bytes_sent = 0; bytes_sent < header_str->len; ){
 		bytes_sent+=send(fd, header_str->bytes+bytes_sent, header_str->len-bytes_sent, 0);
 	}

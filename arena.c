@@ -115,13 +115,31 @@ string* arena_expand_string(Arena *arena, string* str, size_t new_size){
 	return expanded;
 }
 
-string* string_concat(Arena* arena, string* str, char *raw, size_t len){
-	if(!str){
-		str = arena_expand_string(arena, str, len);
-	}else if(str->len+len > str->size){
-		str = arena_expand_string(arena, str, str->len+len);
+string* string_concat(Arena *arena, string *a, string *b){
+	if(!a && !b){
+		return NULL;
 	}
-	for(size_t copied = 0; copied < len ; copied++){
+	if(!a && b){
+		return b;
+	}
+	if(a && !b){
+		return a;
+	}
+	string *c = arena_create_string(arena, a->len+b->len);
+	memcpy(c->bytes, a->bytes, a->len);
+	memcpy(c->bytes+a->len, b->bytes, b->len);
+	c->len = a->len+b->len;
+	return c;
+}
+
+string* string_concat_bytes(Arena* arena, string* str, char *raw, size_t size){
+	if(!str){
+		str = arena_expand_string(arena, str, size);
+	}else if(str->len+size > str->size){
+		str = arena_expand_string(arena, str, str->len+size);
+	}
+	// concat stops at first \0, memcpy can't be used since size is not reliable
+	for(size_t copied = 0; copied < size ; copied++){
 		if(!raw[copied]){
 			break;
 		}
