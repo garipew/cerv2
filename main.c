@@ -45,7 +45,13 @@ int main(){
 
 		HttpHeader request_header = recv_header(&general, clientfd);
 		HttpHeader response_header = write_response_header(&general, &request_header);
+
+		send_header(&general, &response_header, clientfd);
 		if(request_header.message.request_line){
+			if(	request_header.message.request_line->method == GET &&
+				string_find(response_header.message.response_line->status, 0, "200", 3) != -1){
+				send_resource(&request_header, clientfd);
+			}
 			printf("%d ", request_header.message.request_line->method);
 			printf("%s ", request_header.message.request_line->path->bytes);
 			printf("%s\n", request_header.message.request_line->http_version->bytes);
@@ -57,8 +63,6 @@ int main(){
 			}
 			printf("\r\n");
 		}
-
-		send_header(&general, &response_header, clientfd);
 		close(clientfd);
 		arena_reset(&general);
 	}

@@ -55,4 +55,5 @@ HttpHeader read_header(Arena*, int);
 HttpHeader recv_header(Arena*, int);
 HttpHeader write_response_header(Arena*, HttpHeader*);
 void send_header(Arena*, HttpHeader*, int);
+void send_resource(HttpHeader*, int);
 #endif // CERVER_H

@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <errno.h>
+
 #define CHUNK_SIZE 8 
 
 Method get_method_from_string(string *str){
@@ -129,14 +130,14 @@ HttpHeader write_response_header(Arena *arena, HttpHeader *request_header){
 	switch(request_header->message.request_line->method){
 		case GET:
 		case HEAD:
-			if(!stat(request_header->message.request_line->path->bytes, &status)){
+			if(!stat(request_header->message.request_line->path->bytes, &status) &&
+				(status.st_mode & S_IFMT) == S_IFREG){
 				response.message.response_line = new_response_line_from_bytes(arena, "200 Ok", 6);
 				response.content_length = status.st_size;
 				return response;
-			}else if(errno == ENOENT){
-				response.message.response_line = new_response_line_from_bytes(arena, "404 Not Found", 13);
-				return response;
 			}
+			response.message.response_line = new_response_line_from_bytes(arena, "404 Not Found", 13);
+			return response;
 			break;
 		case PUT:
 			break;
@@ -148,6 +149,12 @@ HttpHeader write_response_header(Arena *arena, HttpHeader *request_header){
 			break;
 	}
 	return response;
+}
+
+void ensure_send(int fd, char *bytes, size_t len){
+	for(size_t bytes_sent = 0; bytes_sent < len; ){
+		bytes_sent+=send(fd, bytes+bytes_sent, len-bytes_sent, 0);
+	}
 }
 
 void send_header(Arena *arena, HttpHeader *header, int fd){
@@ -183,7 +190,14 @@ void send_header(Arena *arena, HttpHeader *header, int fd){
 	}
 
 	header_str = string_concat_bytes(arena, header_str, "\r\n", 2);
-	for(size_t bytes_sent = 0; bytes_sent < header_str->len; ){
-		bytes_sent+=send(fd, header_str->bytes+bytes_sent, header_str->len-bytes_sent, 0);
+	ensure_send(fd, header_str->bytes, header_str->len);
+}
+
+void send_resource(HttpHeader *request_header, int fd){
+	FILE *res = fopen(request_header->message.request_line->path->bytes, "r");
+	char chunk[CHUNK_SIZE];
+	for(size_t bytes_read; (bytes_read = fread(chunk, sizeof(char), CHUNK_SIZE, res)) > 0; ){
+		ensure_send(fd, chunk, bytes_read);
 	}
+	fclose(res);
 }
