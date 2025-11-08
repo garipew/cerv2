@@ -16,6 +16,14 @@ typedef enum {
 	BAD
 } Method;
 
+typedef enum {
+	OK,
+	NOT_FOUND,
+	BAD_REQUEST,
+	INTERNAL_ERROR
+} Status;
+
+
 typedef struct {
 	string *http_version;
 	string *status;

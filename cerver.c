@@ -110,17 +110,31 @@ HttpHeader recv_header(Arena *arena, int fd){
 	return header;
 }
 
-ResponseLine* new_response_line_from_bytes(Arena *arena, char *bytes, size_t len){
+ResponseLine* new_response_line(Arena *arena, Status status){
 	ResponseLine *rl = arena_alloc(arena, sizeof(*rl), ALIGNOF(*rl));
 	rl->http_version = string_concat_bytes(arena, NULL, "HTTP/1.0", 8);
-	rl->status = string_concat_bytes(arena, NULL, bytes, len);
+	switch(status){
+		case OK:
+			rl->status = string_concat_bytes(arena, NULL, "200 Ok", 6);
+			break;
+		case BAD_REQUEST:
+			rl->status = string_concat_bytes(arena, NULL, "400 Bad Request", 13);
+			break;
+		case NOT_FOUND:
+			rl->status = string_concat_bytes(arena, NULL, "404 Not Found", 13);
+			break;
+		case INTERNAL_ERROR:
+		default:
+			rl->status = string_concat_bytes(arena, NULL, "500 Internal Server Error", 25);
+			break;
+	}
 	return rl;
 }
 
 HttpHeader write_response_header(Arena *arena, HttpHeader *request_header){
 	HttpHeader response = {0};
 	if(!request_header || request_header->message.request_line->method == BAD){
-		response.message.response_line =  new_response_line_from_bytes(arena, "400 Bad Request", 16);
+		response.message.response_line =  new_response_line(arena, BAD_REQUEST);
 		return response;
 	}
 	struct stat status = {0}; 
@@ -130,15 +144,15 @@ HttpHeader write_response_header(Arena *arena, HttpHeader *request_header){
 	switch(request_header->message.request_line->method){
 		case GET:
 		case HEAD:
-			request_header->message.request_line->path=string_ensure_terminator(arena, request_header->message.request_line->path);
+			request_header->message.request_line->path = string_ensure_terminator(arena, request_header->message.request_line->path);
 			if(!stat(request_header->message.request_line->path->bytes, &status) &&
 				(status.st_mode & S_IFMT) == S_IFREG){
-				response.message.response_line = new_response_line_from_bytes(arena, "200 Ok", 6);
+				response.message.response_line = new_response_line(arena, OK);
 				response.content_length = status.st_size;
 				return response;
 			}
 			perror(request_header->message.request_line->path->bytes);
-			response.message.response_line = new_response_line_from_bytes(arena, "404 Not Found", 13);
+			response.message.response_line = new_response_line(arena, NOT_FOUND);
 			return response;
 			break;
 		case PUT:
@@ -161,7 +175,7 @@ void ensure_send(int fd, char *bytes, size_t len){
 
 void send_header(Arena *arena, HttpHeader *header, int fd){
 	if(!header->message.response_line){
-		header->message.response_line = new_response_line_from_bytes(arena, "500 Internal Server Error", 25);
+		header->message.response_line = new_response_line(arena, INTERNAL_ERROR);
 	}
 	int added_len;
 
