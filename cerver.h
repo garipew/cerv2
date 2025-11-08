@@ -18,30 +18,31 @@ typedef enum {
 
 typedef enum {
 	OK,
-	NOT_FOUND,
 	BAD_REQUEST,
+	NOT_FOUND,
 	INTERNAL_ERROR
 } Status;
 
 
 typedef struct {
-	string *http_version;
-	string *status;
+	Status status;
+	string *http_v;
+	string *status_str;
 } ResponseLine;
 
 typedef struct {
 	Method method;
 	string *path;
-	string *http_version;
+	string *http_v;
 } RequestLine;
 
 typedef union {
-	RequestLine *request_line;
-	ResponseLine *response_line;
+	RequestLine *req_line;
+	ResponseLine *res_line;
 } Message;
 
 typedef struct {
-	Message message;
+	Message msg;
 	string *user_agent;
 	string *host;
 	string *server;
@@ -61,7 +62,7 @@ string* read_line(Arena*, int);
 string* recv_line(Arena*, int);
 HttpHeader read_header(Arena*, int);
 HttpHeader recv_header(Arena*, int);
-HttpHeader write_response_header(Arena*, HttpHeader*);
+HttpHeader write_res_header(Arena*, HttpHeader*);
 void send_header(Arena*, HttpHeader*, int);
 void send_resource(HttpHeader*, int);
 #endif // CERVER_H

@@ -43,23 +43,29 @@ int main(){
 			return -1;
 		}
 
-		HttpHeader request_header = recv_header(&general, clientfd);
-		HttpHeader response_header = write_response_header(&general, &request_header);
+		HttpHeader req_header = recv_header(&general, clientfd);
+		HttpHeader res_header = write_res_header(&general, &req_header);
 
-		send_header(&general, &response_header, clientfd);
-		if(request_header.message.request_line){
-			if(	request_header.message.request_line->method == GET &&
-				string_find(response_header.message.response_line->status, 0, "200", 3) != -1){
-				send_resource(&request_header, clientfd);
+		send_header(&general, &res_header, clientfd);
+		if(req_header.msg.req_line){
+			if(	req_header.msg.req_line->method == GET &&
+				res_header.msg.res_line->status == OK){
+				send_resource(&req_header, clientfd);
 			}
-			printf("%d ", request_header.message.request_line->method);
-			printf("%.*s ", (int)request_header.message.request_line->path->len, request_header.message.request_line->path->bytes);
-			printf("%.*s\n", (int)request_header.message.request_line->http_version->len, request_header.message.request_line->http_version->bytes);
-			if(request_header.host){
-				printf("Host: %s", request_header.host->bytes);
+			printf("%d ", req_header.msg.req_line->method);
+			printf("%.*s ", (int)req_header.msg.req_line->path->len,
+					req_header.msg.req_line->path->bytes);
+			printf("%.*s\n", 
+				(int)req_header.msg.req_line->http_v->len,
+				req_header.msg.req_line->http_v->bytes);
+
+			if(req_header.host){
+				printf("Host: %s", req_header.host->bytes);
 			}
-			if(request_header.user_agent){
-				printf("User-Agent: %s", request_header.user_agent->bytes);
+			if(req_header.user_agent){
+				printf("User-Agent: ");
+				printf("%.*s", (int)req_header.user_agent->len,
+						req_header.user_agent->bytes);
 			}
 			printf("\r\n");
 		}

@@ -190,3 +190,19 @@ string* string_ensure_terminator(Arena *arena, string *str){
 	}
 	return string_concat_bytes(arena, str, "", 1);
 }
+
+string* string_substr(Arena *a, string *str, int start, int end){
+	if(!str || start >= (int)str->len){
+		return NULL;
+	}
+	if(end < 0){
+		end = str->len;
+	}
+	if(end < start){
+		return NULL;
+	}
+	string *sub = arena_create_string(a, end-start);
+	memcpy(sub->bytes, str->bytes+start, sub->size);
+	sub->len = sub->size;
+	return sub;
+}

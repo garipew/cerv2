@@ -44,4 +44,5 @@ string* string_concat_bytes(Arena*, string*, char*, size_t);
 int string_find(string*, size_t, char*, size_t);
 void string_to_bytes(string*, char*, size_t, size_t);
 string* string_ensure_terminator(Arena*, string*);
+string* string_substr(Arena*, string*, int, int);
 #endif // ARENA_H
