@@ -112,7 +112,7 @@ HttpHeader recv_header(Arena *arena, int fd){
 
 ResponseLine* new_response_line_from_bytes(Arena *arena, char *bytes, size_t len){
 	ResponseLine *rl = arena_alloc(arena, sizeof(*rl), ALIGNOF(*rl));
-	rl->http_version = string_concat_bytes(arena, NULL, "HTTP/1.1", 8);
+	rl->http_version = string_concat_bytes(arena, NULL, "HTTP/1.0", 8);
 	rl->status = string_concat_bytes(arena, NULL, bytes, len);
 	return rl;
 }
@@ -130,12 +130,14 @@ HttpHeader write_response_header(Arena *arena, HttpHeader *request_header){
 	switch(request_header->message.request_line->method){
 		case GET:
 		case HEAD:
+			request_header->message.request_line->path=string_ensure_terminator(arena, request_header->message.request_line->path);
 			if(!stat(request_header->message.request_line->path->bytes, &status) &&
 				(status.st_mode & S_IFMT) == S_IFREG){
 				response.message.response_line = new_response_line_from_bytes(arena, "200 Ok", 6);
 				response.content_length = status.st_size;
 				return response;
 			}
+			perror(request_header->message.request_line->path->bytes);
 			response.message.response_line = new_response_line_from_bytes(arena, "404 Not Found", 13);
 			return response;
 			break;

@@ -176,3 +176,17 @@ int string_find(string *line, size_t start_index, char *bytes, size_t len){
 	}
 	return -1;
 }
+
+// TODO(garipew): Eventually either every string should be null terminated or
+// instead of direct access in str->bytes, you should build a wrapper get_bytes
+// to ensure it is null terminated. There is no escape.
+string* string_ensure_terminator(Arena *arena, string *str){
+	if(str->bytes[str->len-1] == 0){
+		return str;
+	}
+	if(str->len < str->size){
+		str->bytes[str->len++] = 0;
+		return str;
+	}
+	return string_concat_bytes(arena, str, "", 1);
+}

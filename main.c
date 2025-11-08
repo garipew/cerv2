@@ -20,7 +20,7 @@ int main(){
 	hint.ai_flags = AI_PASSIVE;
 	hint.ai_family = AF_INET;
 	hint.ai_socktype = SOCK_STREAM;
-	getaddrinfo(NULL, "6666", &hint, &addr);
+	getaddrinfo(NULL, "8666", &hint, &addr);
 	for(p = addr; p; p = p->ai_next){
 		if(bind(fd, p->ai_addr, p->ai_addrlen) == 0){
 			break;
@@ -53,8 +53,8 @@ int main(){
 				send_resource(&request_header, clientfd);
 			}
 			printf("%d ", request_header.message.request_line->method);
-			printf("%s ", request_header.message.request_line->path->bytes);
-			printf("%s\n", request_header.message.request_line->http_version->bytes);
+			printf("%.*s ", (int)request_header.message.request_line->path->len, request_header.message.request_line->path->bytes);
+			printf("%.*s\n", (int)request_header.message.request_line->http_version->len, request_header.message.request_line->http_version->bytes);
 			if(request_header.host){
 				printf("Host: %s", request_header.host->bytes);
 			}
