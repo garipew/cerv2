@@ -8,6 +8,10 @@
 #include "arena.h"
 
 typedef enum {
+	CUSTOM_ROOT
+} Options;
+
+typedef enum {
 	HEAD,
 	GET,
 	POST,
@@ -56,13 +60,14 @@ typedef struct {
 
 typedef struct {
 	int fd;
+	string *root;
 } HttpServer;
 
 string* read_line(Arena*, int);
 string* recv_line(Arena*, int);
 HttpHeader read_header(Arena*, int);
 HttpHeader recv_header(Arena*, int);
-HttpHeader write_res_header(Arena*, HttpHeader*);
+HttpHeader write_res_header(Arena*, HttpHeader*, string*);
 void send_header(Arena*, HttpHeader*, int);
 void send_resource(HttpHeader*, int);
 #endif // CERVER_H

@@ -126,9 +126,13 @@ string* string_concat(Arena *arena, string *a, string *b){
 		return a;
 	}
 	string *c = arena_create_string(arena, a->len+b->len);
-	memcpy(c->bytes, a->bytes, a->len);
-	memcpy(c->bytes+a->len, b->bytes, b->len);
-	c->len = a->len+b->len;
+	int len = a->len;
+	if(a->bytes[len-1] == 0){
+		len--;
+	}
+	memcpy(c->bytes, a->bytes, len);
+	memcpy(c->bytes+len, b->bytes, b->len);
+	c->len = len+b->len;
 	return c;
 }
 

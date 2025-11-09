@@ -136,29 +136,64 @@ string* gethoststr(Arena *a){
 	return s;
 }
 
-HttpHeader write_res_header(Arena *a, HttpHeader *req_header){
+int find_last(string *s, char byte, int end){
+	if(!s || !byte){
+		return -1;
+	}
+	if(end >= (int)s->len){
+		end = s->len-1;
+	}
+	for(; end >= 0; end--){
+		if(s->bytes[end] == byte){
+			return end;
+		}
+	}
+	return -1;
+}
+
+string* resolve_path(Arena *a, string *s){
+	string *norm = s;
+	string *parent;
+	for(int last_safe, at; (at = string_find(norm, 0, "/..", 3)) != -1;){
+		last_safe = find_last(norm, '/', at-1);
+		parent = string_substr(a, norm, 0, last_safe);
+		s = string_substr(a, norm, at+3, -1);
+		norm = string_concat(a, parent, s);
+	}
+	return norm;
+}
+
+HttpHeader write_res_header(Arena *a, HttpHeader *req_header, string *root){
 	HttpHeader response = {0};
 	struct stat status = {0}; 
 	if(!req_header || req_header->msg.req_line->method == BAD){
 		response.msg.res_line = new_res_line(a, BAD_REQUEST);
 		return response;
 	}
-	string *path = req_header->msg.req_line->path;
+	string *path = string_concat(a, root, NULL);
+	if(req_header->msg.req_line->path->bytes[0] != '/'){
+		// TODO(garipew): I am not sure if this is how it's done,
+		// maybe this case is a BAD_REQUEST... This "solves" it,
+		// but look it up, figure it out.
+		path = string_concat_bytes(a, path, "/", 1);
+	}
+	path = string_concat(a, path, req_header->msg.req_line->path);
+	path = string_ensure_terminator(a, path);
+	path = resolve_path(a, path);
+	req_header->msg.req_line->path = path;
 
 	response.server = gethoststr(a);
 
 	switch(req_header->msg.req_line->method){
 		case GET:
 		case HEAD:
-			path = string_ensure_terminator(a, path);
-			req_header->msg.req_line->path = path;
-			if(!stat(path->bytes, &status) &&
+			if(!string_find(path, 0, root->bytes, root->len-1) && 
+				!stat(path->bytes, &status) &&
 				(status.st_mode & S_IFMT) == S_IFREG){
 				response.msg.res_line = new_res_line(a, OK);
 				response.content_length = status.st_size;
 				return response;
 			}
-			perror(path->bytes);
 			response.msg.res_line = new_res_line(a, NOT_FOUND);
 			return response;
 			break;
