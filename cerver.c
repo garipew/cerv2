@@ -178,8 +178,12 @@ HttpHeader write_res_header(Arena *a, HttpHeader *req_header, string *root){
 		path = string_concat_bytes(a, path, "/", 1);
 	}
 	path = string_concat(a, path, req_header->msg.req_line->path);
-	path = string_ensure_terminator(a, path);
 	path = resolve_path(a, path);
+	if(!string_find(path, 0, root->bytes, root->len) &&
+		path->len == root->len+1 &&
+		path->bytes[path->len-1] == '/'){
+		path = string_concat_bytes(a, path, "index.html", 10);
+	}
 	req_header->msg.req_line->path = path;
 
 	response.server = gethoststr(a);
@@ -187,7 +191,7 @@ HttpHeader write_res_header(Arena *a, HttpHeader *req_header, string *root){
 	switch(req_header->msg.req_line->method){
 		case GET:
 		case HEAD:
-			if(!string_find(path, 0, root->bytes, root->len-1) && 
+			if(!string_find(path, 0, root->bytes, root->len) && 
 				!stat(path->bytes, &status) &&
 				(status.st_mode & S_IFMT) == S_IFREG){
 				response.msg.res_line = new_res_line(a, OK);

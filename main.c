@@ -113,7 +113,6 @@ int main(int argc, char** argv){
 	if(cerver.root->bytes[cerver.root->len-1] == '/'){
 		cerver.root->len--;
 	}
-	cerver.root = string_ensure_terminator(&serv_arena, cerver.root);
 	if(stat(cerver.root->bytes, &st) == -1 ||
 		(st.st_mode & S_IFMT) != S_IFDIR){
 		fprintf(stderr, "%s: %s is not a directory or does not exist\n",

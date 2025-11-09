@@ -109,7 +109,7 @@ string* arena_create_string(Arena *arena, size_t size){
 string* arena_expand_string(Arena *arena, string* str, size_t new_size){
 	string *expanded = arena_create_string(arena, new_size);
 	if(str){
-		memcpy(expanded->bytes, str->bytes, str->len); 
+		memcpy(expanded->bytes, str->bytes, str->size); 
 		expanded->len = str->len;
 	}
 	return expanded;
@@ -127,12 +127,10 @@ string* string_concat(Arena *arena, string *a, string *b){
 	}
 	string *c = arena_create_string(arena, a->len+b->len);
 	int len = a->len;
-	if(a->bytes[len-1] == 0){
-		len--;
-	}
 	memcpy(c->bytes, a->bytes, len);
 	memcpy(c->bytes+len, b->bytes, b->len);
 	c->len = len+b->len;
+	c = string_ensure_terminator(arena, c);
 	return c;
 }
 
@@ -149,6 +147,7 @@ string* string_concat_bytes(Arena* arena, string* str, char *raw, size_t size){
 		}
 		str->bytes[str->len++] = raw[copied];	
 	}
+	str = string_ensure_terminator(arena, str);
 	return str;
 }
 
@@ -181,18 +180,17 @@ int string_find(string *line, size_t start_index, char *bytes, size_t len){
 	return -1;
 }
 
-// TODO(garipew): Eventually either every string should be null terminated or
-// instead of direct access in str->bytes, you should build a wrapper get_bytes
-// to ensure it is null terminated. There is no escape.
 string* string_ensure_terminator(Arena *arena, string *str){
 	if(str->bytes[str->len-1] == 0){
 		return str;
 	}
 	if(str->len < str->size){
-		str->bytes[str->len++] = 0;
+		str->bytes[str->len] = 0;
 		return str;
 	}
-	return string_concat_bytes(arena, str, "", 1);
+	str = arena_expand_string(arena, str, str->size+1);
+	str->bytes[str->len] = 0;
+	return str;
 }
 
 string* string_substr(Arena *a, string *str, int start, int end){
@@ -208,5 +206,6 @@ string* string_substr(Arena *a, string *str, int start, int end){
 	string *sub = arena_create_string(a, end-start);
 	memcpy(sub->bytes, str->bytes+start, sub->size);
 	sub->len = sub->size;
+	sub = string_ensure_terminator(a, sub);
 	return sub;
 }
