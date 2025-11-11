@@ -194,7 +194,10 @@ string* string_ensure_terminator(Arena *arena, string *str){
 }
 
 string* string_substr(Arena *a, string *str, int start, int end){
-	if(!str || start >= (int)str->len){
+	if(start < 0){
+		start += str->len-1;
+	}
+	if(!str || start < 0 || (unsigned)start >= str->len){
 		return NULL;
 	}
 	if(end < 0){
