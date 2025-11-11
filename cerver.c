@@ -48,40 +48,31 @@ string* recv_line(Arena* a, int fd){
 	return line;
 }
 
-RequestLine* new_req_line(Arena *a, string *header_str){
+RequestLine* parse_request(Arena *a, string *header_str){
 	RequestLine *rl = arena_alloc(a, sizeof(*rl), ALIGNOF(*rl));
 
-	char *bytes = header_str->bytes;
-	int total_offset, rel_offset = total_offset = 0;
-	total_offset = string_find(header_str, 0, " ", 1);
-	if(total_offset < 0){
+	rl->method = get_method_from_bytes(header_str->bytes, header_str->len);
+	if(rl->method == BAD){
+		// fail point;
 		return NULL;
 	}
-	rel_offset = total_offset - (bytes - header_str->bytes);
-	rl->method = get_method_from_bytes(bytes, rel_offset);
 
-	rel_offset++; 
-	total_offset++; 
-	bytes += rel_offset;
-
-	total_offset = string_find(header_str, total_offset, " ", 1);
-	if(total_offset < 0){
+	int path_start = string_find(header_str, 0, "/", 1);
+	int path_end = string_find(header_str, path_start, " ", 1);
+	if(path_start == -1 || path_end == -1){
+		// fail point;
 		return NULL;
 	}
-	rel_offset = total_offset - (bytes - header_str->bytes);
-	rl->path = string_concat_bytes(a, NULL, bytes, rel_offset);
+	rl->path = string_substr(a, header_str, path_start, path_end);
 
-	rel_offset++;
-	total_offset++;
-	bytes+=rel_offset;
-
-	total_offset = string_find(header_str, total_offset, "\r\n", 2); 
-	rel_offset = total_offset - (bytes - header_str->bytes);
-	if(total_offset < 0 || rel_offset <= 0){
+	int version_start = string_find(header_str, path_end, "HTTP/", 5);
+	int version_end = string_find(header_str, path_end, "\r\n", 2);
+	if(version_start == -1 || version_end == -1 ||
+		(unsigned)(version_end - version_start) > strlen("HTTP/x.x\r")){
+		// fail point;
 		return NULL;
 	}
-	rl->http_v = string_concat_bytes(a, NULL, bytes, rel_offset);
-
+	rl->http_v = string_substr(a, header_str, version_start, version_end);
 	return rl;
 }
 
@@ -92,7 +83,7 @@ HttpHeader recv_header(Arena *a, int fd){
 	for(;;){
 		if(	string_find(str, 0,  "GET", 3) == 0 ||
 			string_find(str, 0,  "HEAD", 4) == 0){
-			header.msg.req_line = new_req_line(a, str);
+			header.msg.req_line = parse_request(a, str);
 			if(!header.msg.req_line){
 				fprintf(stderr, "Bad Request\n400?\n\n");
 			}
@@ -137,10 +128,10 @@ string* gethoststr(Arena *a){
 }
 
 int find_last(string *s, char byte, int end){
-	if(!s || !byte){
+	if(!s || !byte || end < 0){
 		return -1;
 	}
-	if(end >= (int)s->len){
+	if((unsigned)end >= s->len){
 		end = s->len-1;
 	}
 	for(; end >= 0; end--){
