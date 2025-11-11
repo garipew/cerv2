@@ -7,6 +7,12 @@ also to develop a simpler, easier to read version.
 
 Check by yourself if this codebase is simpler than [the old version](https://github.com/garipew/cerver).
 
+## Build
+Simply
+```
+make
+```
+
 ## Options
 Currently there is only one option implemented.
 ```
