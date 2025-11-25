@@ -1,16 +1,12 @@
 CC=gcc
-CFLAGS=-Wall -Wextra -pedantic -std=c99 -g
+CFLAGS=-Wall -Wextra -pedantic -std=c99 -g -I/usr/local/include/snorkel -L/usr/local/lib
+CLIBS=-lsnorkel
 
-all: cerver.o arena.o cerver
-
-arena.o: arena.c arena.h
-	$(CC) $(CFLAGS) -c arena.c
+cerver: main.c cerver.o
+	$(CC) $(CFLAGS) -o cerver main.c cerver.o $(CLIBS)
 
 cerver.o: cerver.c cerver.h
-	$(CC) $(CFLAGS) -c cerver.c
-
-cerver: main.c cerver.o arena.o
-	$(CC) $(CFLAGS) -o cerver main.c cerver.o arena.o
+	$(CC) $(CFLAGS) -c cerver.c $(CLIBS)
 
 clean:
 	rm -rf *.o cerver

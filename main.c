@@ -1,4 +1,3 @@
-#include "arena.h"
 #include "cerver.h"
 #include <stdio.h>
 #include <fcntl.h>
@@ -8,6 +7,7 @@
 #include <getopt.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <snorkel.h>
 
 Arena serv_arena = {0};
 Arena msg_arena = {0};

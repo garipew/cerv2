@@ -5,7 +5,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "arena.h"
+#include <snorkel.h>
 
 typedef enum {
 	CUSTOM_ROOT
