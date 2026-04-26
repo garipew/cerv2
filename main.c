@@ -7,7 +7,9 @@
 #include <getopt.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <snorkel.h>
+
+#define SNORKEL_IMPLEMENTATION
+#include "snorkel/snorkel_arena.h"
 
 Arena serv_arena = {0};
 Arena msg_arena = {0};
