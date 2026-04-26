@@ -5,7 +5,29 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <snorkel.h>
+#include "snorkel/snorkel_arena.h"
+
+/////////////////////////////////////
+///	Strings
+/////////////////////////////////////
+
+typedef struct {
+	char *bytes;
+	size_t len;
+	size_t size;
+} string;
+
+string* arena_create_string(Arena*, size_t);
+string* string_concat(Arena*, string*, string*);
+string* string_concat_bytes(Arena*, string*, char*, size_t);
+int string_find(string*, size_t, char*, size_t);
+void string_to_bytes(string*, char*, size_t, size_t);
+string* string_ensure_terminator(Arena*, string*);
+string* string_substr(Arena*, string*, int, int);
+
+/////////////////////////////////////
+///	Cerver
+/////////////////////////////////////
 
 typedef enum {
 	CUSTOM_ROOT

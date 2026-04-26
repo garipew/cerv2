@@ -9,6 +9,128 @@
 
 #define CHUNK_SIZE 8 
 
+////////////////////////////////////////////
+///	Strings
+///////////////////////////////////////////
+
+string* arena_create_string(Arena *arena, size_t size){
+	string *str = arena_alloc(arena, sizeof(*str)+size);
+	str->size = size;
+	str->bytes = (char*)str+sizeof(*str);
+	return str;
+}
+
+string* arena_expand_string(Arena *arena, string* str, size_t new_size){
+	string *expanded = arena_create_string(arena, new_size);
+	if(str){
+		memcpy(expanded->bytes, str->bytes, str->size);
+		expanded->len = str->len;
+	}
+	return expanded;
+}
+
+string* string_concat(Arena *arena, string *a, string *b){
+	if(!a && !b){
+		return NULL;
+	}
+	if(!a && b){
+		return b;
+	}
+	if(a && !b){
+		return a;
+	}
+	string *c = arena_create_string(arena, a->len+b->len);
+	int len = a->len;
+	memcpy(c->bytes, a->bytes, len);
+	memcpy(c->bytes+len, b->bytes, b->len);
+	c->len = len+b->len;
+	c = string_ensure_terminator(arena, c);
+	return c;
+}
+
+string* string_concat_bytes(Arena* arena, string* str, char *raw, size_t size){
+	if(!str){
+		str = arena_expand_string(arena, str, size);
+	}else if(str->len+size > str->size){
+		str = arena_expand_string(arena, str, str->len+size);
+	}
+	// concat stops at first \0, memcpy can't be used since size is not reliable
+	for(size_t copied = 0; copied < size ; copied++){
+		if(!raw[copied]){
+			break;
+		}
+		str->bytes[str->len++] = raw[copied];
+	}
+	str = string_ensure_terminator(arena, str);
+	return str;
+}
+
+void string_to_bytes(string *str, char *bytes, size_t start, size_t byte_count){
+	for(size_t copied = 0; copied < byte_count; copied++){
+		bytes[copied] = str->bytes[start+copied];
+	}
+}
+
+int string_find(string *line, size_t start_index, char *bytes, size_t len){
+	if(!line || start_index >= line->len || !bytes || *bytes == 0){
+		return -1;
+	}
+	char *current = bytes;
+	size_t at;
+	for(at = start_index; at < line->len; at++){
+		if(current == bytes+len){
+			return at-len;
+		}
+		if(line->bytes[at] != *current){
+			current = bytes;
+		}
+		if(line->bytes[at] == *current){
+			current++;
+		}
+	}
+	if(current == bytes+len){
+		return at-len;
+	}
+	return -1;
+}
+
+string* string_ensure_terminator(Arena *arena, string *str){
+	if(str->bytes[str->len-1] == 0){
+		return str;
+	}
+	if(str->len < str->size){
+		str->bytes[str->len] = 0;
+		return str;
+	}
+	str = arena_expand_string(arena, str, str->size+1);
+	str->bytes[str->len] = 0;
+	return str;
+}
+
+string* string_substr(Arena *a, string *str, int start, int end){
+	if(start < 0){
+		start += str->len-1;
+	}
+	if(!str || start < 0 || (unsigned)start >= str->len){
+		return NULL;
+	}
+	if(end < 0){
+		end = str->len;
+	}
+	if(end < start){
+		return NULL;
+	}
+	string *sub = arena_create_string(a, end-start);
+	memcpy(sub->bytes, str->bytes+start, sub->size);
+	sub->len = sub->size;
+	sub = string_ensure_terminator(a, sub);
+	return sub;
+}
+
+////////////////////////////////////////////
+///	Cerver
+////////////////////////////////////////////
+
 Method get_method_from_bytes(char *b, size_t len){
 	if(len >= 3 && !strncmp(b, "GET", 3)){
 		return GET;
@@ -49,7 +171,7 @@ string* recv_line(Arena* a, int fd){
 }
 
 RequestLine* parse_request(Arena *a, string *header_str){
-	RequestLine *rl = arena_alloc(a, sizeof(*rl), ALIGNOF(*rl));
+	RequestLine *rl = arena_alloc(a, sizeof(*rl));
 
 	rl->method = get_method_from_bytes(header_str->bytes, header_str->len);
 	if(rl->method == BAD){
@@ -113,7 +235,7 @@ string* get_string_from_status(Arena *a, Status status){
 }
 
 ResponseLine* new_res_line(Arena *a, Status status){
-	ResponseLine *rl = arena_alloc(a, sizeof(*rl), ALIGNOF(*rl));
+	ResponseLine *rl = arena_alloc(a, sizeof(*rl));
 	rl->http_v = string_concat_bytes(a, NULL, "HTTP/1.0", 8);
 	rl->status_str = get_string_from_status(a, status);
 	rl->status = status;
