@@ -82,6 +82,8 @@ int setup_server(HttpServer *server){
 		perror("listen error");
 		return 0;
 	}
+	fprintf(stdout, "Server is running and listening on port 8666\n");
+
 	return 1;
 }
 
