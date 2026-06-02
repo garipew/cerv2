@@ -1,4 +1,5 @@
 #include "cerver.h"
+#include "client.h"
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -10,47 +11,51 @@
 
 #define SNORKEL_IMPLEMENTATION
 #include "snorkel/snorkel_arena.h"
+#include "snorkel/snorkel_pool.h"
 
 Arena serv_arena = {0};
-Arena msg_arena = {0};
 
-__attribute__((noreturn)) void http_loop(HttpServer *cerver){
-	for(;;){
+void* tpool_alloc(size_t size) {
+	arena_flag(&serv_arena);
+	return arena_alloc(&serv_arena, size);
+}
+
+void* tpool_realloc(void *ptr, size_t size) {
+	(void)ptr;
+	arena_restore(&serv_arena);
+	return tpool_alloc(size);
+}
+
+void tpool_free(void *ptr) {
+	(void)ptr;
+	return;
+}
+
+__attribute__((noreturn)) void http_loop(HttpServer *cerver) {
+	snorkel_pool_inject_allocators(tpool_alloc, tpool_realloc, tpool_free);
+
+	const int max_count = 1<<10;
+	int count = 0;
+
+	Arena client_arena = {0};
+	Pool *t_pool = create_pool(8, max_count);
+	for(;;) {
+		if(count == max_count) {
+			wait_pool(t_pool);
+			fprintf(stderr, "resetting client arena\n");
+			arena_reset(&client_arena);
+			count = 0;
+		}
 		int clientfd = accept(cerver->fd, 0, 0);
 		if(clientfd < 0){
 			perror("accept error");
 			continue;
 		}
-
-		HttpHeader req_header = recv_header(&msg_arena, clientfd);
-		HttpHeader res_header = write_res_header(&msg_arena,
-				&req_header, cerver->root);
-
-		send_header(&msg_arena, &res_header, clientfd);
-		if(req_header.msg.req_line){
-			if(	req_header.msg.req_line->method == GET &&
-				res_header.msg.res_line->status == OK){
-				send_resource(&req_header, clientfd);
-			}
-			printf("%d ", req_header.msg.req_line->method);
-			printf("%.*s ", (int)req_header.msg.req_line->path->len,
-					req_header.msg.req_line->path->bytes);
-			printf("%.*s\n", 
-				(int)req_header.msg.req_line->http_v->len,
-				req_header.msg.req_line->http_v->bytes);
-
-			if(req_header.host){
-				printf("Host: %s", req_header.host->bytes);
-			}
-			if(req_header.user_agent){
-				printf("User-Agent: ");
-				printf("%.*s", (int)req_header.user_agent->len,
-						req_header.user_agent->bytes);
-			}
-			printf("\r\n");
-		}
-		close(clientfd);
-		arena_reset(&msg_arena);
+		HttpClient *c = arena_alloc(&client_arena, sizeof(*c));
+		c->fd = clientfd;
+		c->cerver = cerver;
+		register_task(t_pool, 1, http_reply, c);
+		count++;
 	}
 }
 
