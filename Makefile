@@ -1,11 +1,11 @@
 CC=gcc
 CFLAGS=-Wall -Wextra -pedantic -std=c99 -g
 
-cerver: snorkel/snorkel_arena.h main.c cerver.o
-	$(CC) $(CFLAGS) -o cerver main.c cerver.o
+cerver: main.c cerver.o client.o
+	$(CC) $(CFLAGS) -o cerver main.c cerver.o client.o
 
-cerver.o: snorkel/snorkel_arena.h cerver.c cerver.h
-	$(CC) $(CFLAGS) -c cerver.c
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
 	rm -rf *.o cerver
