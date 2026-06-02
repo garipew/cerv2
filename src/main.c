@@ -42,7 +42,6 @@ __attribute__((noreturn)) void http_loop(HttpServer *cerver) {
 	for(;;) {
 		if(count == max_count) {
 			wait_pool(t_pool);
-			fprintf(stderr, "resetting client arena\n");
 			arena_reset(&client_arena);
 			count = 0;
 		}

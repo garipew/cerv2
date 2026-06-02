@@ -1,11 +1,13 @@
 CC=gcc
-CFLAGS=-Wall -Wextra -pedantic -std=c99 -g
+CFLAGS=-Wall -Wextra -pedantic -std=c99 -Ivendor
 
-cerver: main.c cerver.o client.o
-	$(CC) $(CFLAGS) -o cerver main.c cerver.o client.o
+cerver: src/main.c out/cerver.o out/client.o
+	@mkdir -p out/bin
+	$(CC) $(CFLAGS) $^ -o out/bin/$@
 
-%.o: %.c
+out/%.o: src/%.c
+	@mkdir -p out
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -rf *.o cerver
+	rm -rf out/

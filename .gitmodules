@@ -1,3 +1,3 @@
 [submodule "snorkel"]
-	path = snorkel
+	path = vendor/snorkel
 	url = https://github.com/garipew/snorkel
